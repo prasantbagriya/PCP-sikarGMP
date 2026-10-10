@@ -137,11 +137,11 @@ function ensureInitialSeed() {
 }
 async function startServer() {
   ensureInitialSeed();
-  const app = express();
-  app.use(cors());
-  app.use(express.json());
-  app.use(cookieParser());
-  app.use(session({
+  const app2 = express();
+  app2.use(cors());
+  app2.use(express.json());
+  app2.use(cookieParser());
+  app2.use(session({
     secret: process.env.SESSION_SECRET || "gbp-sync-secret",
     resave: false,
     saveUninitialized: true,
@@ -156,7 +156,7 @@ async function startServer() {
     process.env.GOOGLE_CLIENT_SECRET,
     `${process.env.APP_URL || "http://localhost:3000"}/auth/callback`
   );
-  app.get("/api/auth/url", (req, res) => {
+  app2.get("/api/auth/url", (req, res) => {
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: "offline",
       scope: SCOPES,
@@ -164,7 +164,7 @@ async function startServer() {
     });
     res.json({ url: authUrl });
   });
-  app.get("/auth/callback", async (req, res) => {
+  app2.get("/auth/callback", async (req, res) => {
     const { code } = req.query;
     try {
       const { tokens } = await oauth2Client.getToken(code);
@@ -189,19 +189,19 @@ async function startServer() {
       res.status(500).send("Authentication failed");
     }
   });
-  app.get("/api/user/status", (req, res) => {
+  app2.get("/api/user/status", (req, res) => {
     const tokens = req.session.tokens;
     res.json({
       isAuthenticated: !!tokens,
       hasGoogleCredentials: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
     });
   });
-  app.get("/api/logout", (req, res) => {
+  app2.get("/api/logout", (req, res) => {
     req.session.destroy(() => {
       res.json({ success: true });
     });
   });
-  app.get("/api/gbp/locations", async (req, res) => {
+  app2.get("/api/gbp/locations", async (req, res) => {
     const tokens = req.session.tokens;
     if (tokens) {
       oauth2Client.setCredentials(tokens);
@@ -248,7 +248,7 @@ async function startServer() {
     }
     res.json({ locations: [] });
   });
-  app.get("/api/gbp/reviews", async (req, res) => {
+  app2.get("/api/gbp/reviews", async (req, res) => {
     const tokens = req.session.tokens;
     const { locationName } = req.query;
     let liveReviews = [];
@@ -277,7 +277,7 @@ async function startServer() {
     });
     res.json({ reviews: enrichedReviews });
   });
-  app.post("/api/gbp/reviews/reply", async (req, res) => {
+  app2.post("/api/gbp/reviews/reply", async (req, res) => {
     const { reviewId, reviewName, comment } = req.body;
     if (!reviewId || !comment) {
       return res.status(400).json({ error: "reviewId and comment are required" });
@@ -305,7 +305,7 @@ async function startServer() {
       res.status(500).json({ error: apiErr?.message || "Failed to post reply to Google" });
     }
   });
-  app.delete("/api/gbp/reviews/reply", async (req, res) => {
+  app2.delete("/api/gbp/reviews/reply", async (req, res) => {
     const { reviewId, reviewName } = req.body;
     if (!reviewId) return res.status(400).json({ error: "reviewId is required" });
     memoryStore.replies.delete(reviewId);
@@ -325,7 +325,7 @@ async function startServer() {
     }
     res.json({ success: true });
   });
-  app.post("/api/reviews/ai-reply", async (req, res) => {
+  app2.post("/api/reviews/ai-reply", async (req, res) => {
     const { reviewerName, starRating, comment, tone, businessName, customInstructions } = req.body;
     const ratingNumber = starRating === "FIVE" ? 5 : starRating === "FOUR" ? 4 : starRating === "THREE" ? 3 : starRating === "TWO" ? 2 : 1;
     const chosenTone = tone || (ratingNumber >= 4 ? "Warm & Courteous" : "Empathetic & Solution-Oriented");
@@ -364,7 +364,7 @@ Rules:
       res.json({ reply: fallback });
     }
   });
-  app.get("/api/gbp/posts", async (req, res) => {
+  app2.get("/api/gbp/posts", async (req, res) => {
     const { locationName } = req.query;
     if (!locationName) {
       return res.json({ posts: [] });
@@ -401,7 +401,7 @@ Rules:
       res.json({ posts: [] });
     }
   });
-  app.post("/api/gbp/posts", async (req, res) => {
+  app2.post("/api/gbp/posts", async (req, res) => {
     const { locationName, topicType, summary, callToAction, mediaUrl, event, offer } = req.body;
     if (!summary) {
       return res.status(400).json({ error: "Post summary is required" });
@@ -448,7 +448,7 @@ Rules:
       res.status(500).json({ error: err?.message || "Failed to publish post to Google" });
     }
   });
-  app.post("/api/posts/ai-generate", async (req, res) => {
+  app2.post("/api/posts/ai-generate", async (req, res) => {
     const { topicType, businessName, promptTopic } = req.body;
     const prompt = `Write an engaging, high-converting Google Business Profile local post for "${businessName || "our business"}".
 Post Type: ${topicType || "STANDARD (What's New)"}
@@ -471,7 +471,7 @@ Requirements:
       });
     }
   });
-  app.get("/api/gbp/services", async (req, res) => {
+  app2.get("/api/gbp/services", async (req, res) => {
     const { locationName } = req.query;
     if (!locationName) {
       return res.json({ services: [] });
@@ -507,7 +507,7 @@ Requirements:
       res.json({ services: [] });
     }
   });
-  app.post("/api/gbp/services", async (req, res) => {
+  app2.post("/api/gbp/services", async (req, res) => {
     const { id, locationName, category, name, price, priceType, currency, description, enabled } = req.body;
     if (!name || !category) {
       return res.status(400).json({ error: "Name and category are required" });
@@ -543,7 +543,7 @@ Requirements:
     memoryStore.services.push(newService);
     res.json({ success: true, service: newService });
   });
-  app.delete("/api/gbp/services/:id", async (req, res) => {
+  app2.delete("/api/gbp/services/:id", async (req, res) => {
     const { id } = req.params;
     memoryStore.services = memoryStore.services.filter((s) => s.id !== id);
     res.json({ success: true });
@@ -558,10 +558,10 @@ Requirements:
     { day: "Sunday", open: "10:30", close: "00:00", closed: false }
   ];
   let storeHours = [...defaultHours];
-  app.get("/api/gbp/hours", (req, res) => {
+  app2.get("/api/gbp/hours", (req, res) => {
     res.json({ hours: storeHours });
   });
-  app.post("/api/gbp/hours", (req, res) => {
+  app2.post("/api/gbp/hours", (req, res) => {
     const { hours } = req.body;
     if (Array.isArray(hours)) {
       storeHours = hours;
@@ -569,7 +569,7 @@ Requirements:
     }
     res.status(400).json({ error: "Invalid hours format" });
   });
-  app.get("/api/gbp/review-link", (req, res) => {
+  app2.get("/api/gbp/review-link", (req, res) => {
     const { businessName, placeId } = req.query;
     const name = businessName || "Royal Gourmet Restaurant";
     const reviewUrl = placeId ? `https://search.google.com/local/writereview?placeid=${placeId}` : `https://g.page/r/Cb9Q1XyZ48EwEB0/review`;
@@ -586,7 +586,7 @@ Your review is very valuable to us!`
       qrCodeData: reviewUrl
     });
   });
-  app.get("/api/gbp/diagnostics", async (req, res) => {
+  app2.get("/api/gbp/diagnostics", async (req, res) => {
     const tokens = req.session.tokens;
     if (!tokens) return res.status(401).json({ error: "Not authenticated" });
     oauth2Client.setCredentials(tokens);
@@ -645,7 +645,7 @@ Your review is very valuable to us!`
     }
     res.json({ diagnostics: results });
   });
-  app.get("/api/gbp/enable-programmatic", async (req, res) => {
+  app2.get("/api/gbp/enable-programmatic", async (req, res) => {
     const tokens = req.session.tokens;
     if (!tokens) return res.status(401).send("Not authenticated. Please connect Google Account first.");
     oauth2Client.setCredentials(tokens);
@@ -673,7 +673,7 @@ Your review is very valuable to us!`
       `);
     }
   });
-  app.post("/api/reviews/ai-sentiment", async (req, res) => {
+  app2.post("/api/reviews/ai-sentiment", async (req, res) => {
     const { reviews } = req.body;
     const reviewTexts = (reviews || []).slice(0, 10).map((r) => `[${r.starRating}\u2605] "${r.comment || ""}"`).join("\n");
     const prompt = `Analyze these recent Google Business Profile reviews for a local business:
@@ -712,7 +712,7 @@ Return ONLY valid JSON.`;
       });
     }
   });
-  app.post("/api/sync/sheets", async (req, res) => {
+  app2.post("/api/sync/sheets", async (req, res) => {
     const tokens = req.session.tokens;
     const { spreadsheetId, data, sheetTitle } = req.body;
     if (!spreadsheetId) {
@@ -746,16 +746,23 @@ Return ONLY valid JSON.`;
       server: { middlewareMode: true },
       appType: "spa"
     });
-    app.use(vite.middlewares);
+    app2.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+    app2.use(express.static(distPath));
+    app2.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app2.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
+  return app2;
 }
-startServer();
+var app = await startServer();
+var server_default = app;
+export {
+  server_default as default
+};
