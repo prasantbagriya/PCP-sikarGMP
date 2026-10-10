@@ -12,7 +12,7 @@ import { GoogleGenAI } from "@google/genai";
 dotenv.config();
 var __filename = fileURLToPath(import.meta.url);
 var __dirname = path.dirname(__filename);
-var PORT = process.env.PORT || 3e3;
+var PORT = process.env.PORT ? parseInt(process.env.PORT) : 3e3;
 var SCOPES = [
   "https://www.googleapis.com/auth/business.manage",
   "https://www.googleapis.com/auth/spreadsheets",
