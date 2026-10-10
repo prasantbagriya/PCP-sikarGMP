@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" translate="no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="google" content="notranslate" />
+    <title>GBP Live Sync</title>
+    <meta name="description" content="Real-time Google Business Profile monitor that syncs reviews and updates directly to Google Sheets." />
+    <meta property="og:title" content="GBP Live Sync" />
+    <meta property="og:description" content="Real-time Google Business Profile monitor that syncs reviews and updates directly to Google Sheets." />
+    <script>
+      // Defensive shim: allow setting window.fetch in environments where it has only a getter
+      (function() {
+        try {
+          var _f = window.fetch;
+          Object.defineProperty(window, 'fetch', {
+            configurable: true,
+            enumerable: true,
+            get: function() { return _f; },
+            set: function(v) { _f = v; }
+          });
+        } catch (_) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
